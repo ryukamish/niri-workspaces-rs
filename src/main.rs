@@ -1,65 +1,84 @@
-use serde::Deserialize;
+use niri_ipc::socket::Socket;
+use niri_ipc::{Event, Request, Response, Window, Workspace};
 use std::collections::HashMap;
 use std::fs;
-use std::process::Command;
-
-#[derive(Deserialize)]
-struct Workspace {
-    id: i64,
-    idx: i32,
-    is_focused: bool,
-    active_window_id: Option<i64>,
-}
-
-#[derive(Deserialize)]
-struct Window {
-    id: i64,
-    workspace_id: i64,
-    app_id: String,
-    title: String,
-    is_focused: bool,
-    pid: Option<u32>,
-}
 
 fn main() {
-    // Get data from niri in parallel
-    let ws_handle = std::thread::spawn(|| {
-        Command::new("niri")
-            .args(["msg", "-j", "workspaces"])
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-    });
-
-    let win_handle = std::thread::spawn(|| {
-        Command::new("niri")
-            .args(["msg", "-j", "windows"])
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-    });
-
-    let (workspaces_json, windows_json) = match (ws_handle.join().ok().flatten(), win_handle.join().ok().flatten()) {
-        (Some(w), Some(win)) => (w, win),
-        _ => {
-            println!(r#"{{"text": "", "tooltip": "niri not running"}}"#);
-            return;
+    loop {
+        if let Err(e) = run_daemon() {
+            eprintln!("Daemon error: {}, reconnecting in 1s...", e);
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
+    }
+}
+
+fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
+    // Get initial state and output
+    let (workspaces, windows) = fetch_state()?;
+    output_status(&workspaces, &windows);
+
+    // Subscribe to event stream
+    let mut socket = Socket::connect()?;
+    let reply = socket.send(Request::EventStream)?;
+
+    match reply {
+        Ok(Response::Handled) => {}
+        Ok(other) => return Err(format!("Unexpected response: {:?}", other).into()),
+        Err(msg) => return Err(msg.into()),
+    }
+
+    let mut read_event = socket.read_events();
+
+    loop {
+        let event = read_event()?;
+
+        // Only update on relevant events
+        match event {
+            Event::WorkspacesChanged { .. }
+            | Event::WorkspaceActivated { .. }
+            | Event::WindowsChanged { .. }
+            | Event::WindowOpenedOrChanged { .. }
+            | Event::WindowClosed { .. }
+            | Event::WindowFocusChanged { .. } => {
+                if let Ok((ws, win)) = fetch_state() {
+                    output_status(&ws, &win);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn fetch_state() -> Result<(Vec<Workspace>, Vec<Window>), Box<dyn std::error::Error>> {
+    let mut socket = Socket::connect()?;
+
+    let workspaces = match socket.send(Request::Workspaces)? {
+        Ok(Response::Workspaces(ws)) => ws,
+        Ok(other) => return Err(format!("Unexpected: {:?}", other).into()),
+        Err(msg) => return Err(msg.into()),
     };
 
-    let mut workspaces: Vec<Workspace> = serde_json::from_str(&workspaces_json).unwrap_or_default();
-    let windows: Vec<Window> = serde_json::from_str(&windows_json).unwrap_or_default();
+    let mut socket = Socket::connect()?;
+    let windows = match socket.send(Request::Windows)? {
+        Ok(Response::Windows(ws)) => ws,
+        Ok(other) => return Err(format!("Unexpected: {:?}", other).into()),
+        Err(msg) => return Err(msg.into()),
+    };
 
-    workspaces.sort_by_key(|w| w.idx);
+    Ok((workspaces, windows))
+}
 
-    // Pre-compute terminal apps by checking /proc
-    let terminal_apps: HashMap<u32, &str> = windows
+fn output_status(workspaces: &[Workspace], windows: &[Window]) {
+    // Pre-compute terminal apps
+    let terminal_apps: HashMap<i32, &str> = windows
         .iter()
-        .filter(|w| is_terminal(&w.app_id))
-        .filter_map(|w| w.pid)
-        .map(|pid| (pid, detect_terminal_app(pid)))
+        .filter(|w| is_terminal(w.app_id.as_deref().unwrap_or("")))
+        .filter_map(|w| w.pid.map(|pid| (pid, detect_terminal_app(pid as u32))))
         .filter(|(_, app)| !app.is_empty())
         .collect();
+
+    let mut sorted_workspaces: Vec<&Workspace> = workspaces.iter().collect();
+    sorted_workspaces.sort_by_key(|w| w.idx);
 
     let mut before_focused: Vec<String> = Vec::new();
     let mut after_focused: Vec<String> = Vec::new();
@@ -68,10 +87,10 @@ fn main() {
     let mut chrome_idx = 0;
     let mut tooltip = String::new();
 
-    for ws in &workspaces {
+    for ws in &sorted_workspaces {
         let mut ws_windows: Vec<&Window> = windows
             .iter()
-            .filter(|w| w.workspace_id == ws.id)
+            .filter(|w| w.workspace_id == Some(ws.id))
             .collect();
 
         ws_windows.sort_by_key(|w| w.id);
@@ -88,7 +107,9 @@ fn main() {
         } else {
             let mut output = String::new();
             for win in &ws_windows {
-                let mut color = get_color(&win.app_id, &win.title, win.pid, &terminal_apps);
+                let app_id = win.app_id.as_deref().unwrap_or("");
+                let title = win.title.as_deref().unwrap_or("");
+                let mut color = get_color(app_id, title, win.pid, &terminal_apps);
 
                 if color == "chrome" {
                     const CHROME_COLORS: [&str; 4] = ["#ea4335", "#fbbc05", "#34a853", "#4285f4"];
@@ -102,7 +123,7 @@ fn main() {
 
                 let bar = if win.is_focused {
                     "█"
-                } else if !ws.is_focused && Some(win.id) == ws.active_window_id {
+                } else if !ws.is_focused && ws.active_window_id == Some(win.id) {
                     "▌"
                 } else {
                     "|"
@@ -182,7 +203,7 @@ fn get_all_descendants(pid: u32) -> std::io::Result<Vec<u32>> {
     Ok(descendants)
 }
 
-fn get_color(app_id: &str, title: &str, pid: Option<u32>, terminal_apps: &HashMap<u32, &str>) -> String {
+fn get_color(app_id: &str, title: &str, pid: Option<i32>, terminal_apps: &HashMap<i32, &str>) -> String {
     if is_terminal(app_id) {
         let title_lower = title.to_lowercase();
 
@@ -201,7 +222,8 @@ fn get_color(app_id: &str, title: &str, pid: Option<u32>, terminal_apps: &HashMa
                     "codex" => "#56b6c2",
                     "nvim" => "#98c379",
                     _ => "#888888",
-                }.to_string();
+                }
+                .to_string();
             }
         }
 
