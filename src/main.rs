@@ -129,15 +129,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                     "|"
                 };
 
-                let strike = if ws.is_active {
-                    " strikethrough='true'"
-                } else {
-                    ""
-                };
-                output.push_str(&format!(
-                    "<span color='{}'{}>{}</span>",
-                    color, strike, bar
-                ));
+                output.push_str(&format!("<span color='{}'>{}</span>", color, bar));
             }
             output
         };
