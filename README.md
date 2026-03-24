@@ -8,7 +8,7 @@ A fast, event-driven workspace indicator for [Waybar](https://github.com/Alexays
 
 - **Visual bars instead of numbers** — each window is rendered as a colored bar.
 - **Event-driven daemon mode** — keeps a persistent niri socket connection and emits JSON updates only when workspace/window state changes.
-- **App-aware coloring** — built-in colors for Chrome, Firefox, Discord/Vesktop, Spotify, Todoist, Gmail, and terminals.
+- **App-aware coloring** — built-in colors for Chrome (red), Firefox, Discord/Vesktop, Spotify, Todoist, Gmail, and terminals.
 - **Terminal app detection via `/proc`** — detects `jcode`, Claude, Codex, and Neovim/Vim running inside terminal windows.
 - **Terminal support** — works with Alacritty, Kitty, Ghostty, Foot, and Footclient.
 - **Focus semantics** — uses `█` for the focused window, `▌` for the active window on an unfocused workspace, and `|` for other windows.

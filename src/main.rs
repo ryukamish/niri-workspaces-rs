@@ -102,7 +102,6 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
     let mut after_focused: Vec<String> = Vec::new();
     let mut focused_output = String::new();
     let mut current_section = "before";
-    let mut chrome_idx = 0;
     let mut tooltip = String::new();
 
     for ws in &sorted_workspaces {
@@ -149,12 +148,6 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                 let title = win.title.as_deref().unwrap_or("");
                 let mut color = get_color(app_id, title, win.pid, &terminal_apps);
                 let is_tmux = is_tmux_title(title);
-
-                if color == "chrome" {
-                    const CHROME_COLORS: [&str; 4] = ["#ea4335", "#fbbc05", "#34a853", "#4285f4"];
-                    color = CHROME_COLORS[chrome_idx % 4].to_string();
-                    chrome_idx += 1;
-                }
 
                 if !ws.is_focused {
                     color = dim_color(&color);
@@ -320,7 +313,7 @@ fn get_color(
         return "#98c379".to_string();
     }
     if app_id == "google-chrome" || app_id.contains("chrome") {
-        return "chrome".to_string();
+        return "#ea4335".to_string();
     }
     if app_id == "firefox" {
         return "#ff7139".to_string();
