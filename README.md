@@ -2,6 +2,8 @@
 
 A fast, event-driven workspace indicator for [Waybar](https://github.com/Alexays/Waybar) and [niri](https://github.com/YaLTeR/niri).
 
+<img width="719" height="1762" alt="image" src="https://github.com/user-attachments/assets/d9f11bb1-1902-4ce5-ad1f-b56756b0d259" />
+
 ## Features
 
 - **Visual bars** instead of numbers - each window is a colored bar
