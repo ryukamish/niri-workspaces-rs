@@ -134,9 +134,15 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
 
         let ws_output = if win_count == 0 {
             // Empty but focused - just show a dot, no name
-            "<span color='#888888'>·</span>".to_string()
+            // "<span color='#888888'>·</span>".to_string()
+            format!("{} <span color='#888888'>.</span>", ws.idx)
         } else {
             let mut output = String::new();
+
+            // Always show the workspace number on the left
+            if ws.is_focused {
+                output.push_str(&format!("{} ", ws.idx));
+            }
 
             // Show workspace name only when focused
             if has_custom_name && ws.is_focused {
@@ -154,7 +160,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                 }
 
                 let mut bar = if win.is_focused {
-                    "█"
+                    "<span color='#ffa500'>█</span>"
                 } else if !ws.is_focused && ws.active_window_id == Some(win.id) {
                     "▌"
                 } else {
@@ -166,6 +172,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                     bar = "¦";
                 }
 
+                // output.push_str(&format!("<span color='{}'>{}</span>", color, bar));
                 output.push_str(&format!("<span color='{}'>{}</span>", color, bar));
             }
             output
