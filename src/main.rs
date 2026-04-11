@@ -141,7 +141,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
 
             // Always show the workspace number on the left
             if ws.is_focused {
-                output.push_str(&format!("{} ", ws.idx));
+                output.push_str(&format!("<span color='#cccccc'>{}</span> ", ws.idx));
             }
 
             // Show workspace name only when focused
