@@ -160,7 +160,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                 }
 
                 let mut bar = if win.is_focused {
-                    "<span color='#ffa500'>█</span>"
+                    "<span color='#a76eee'>█</span>"
                 } else if !ws.is_focused && ws.active_window_id == Some(win.id) {
                     "▌"
                 } else {
