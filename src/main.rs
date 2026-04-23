@@ -319,10 +319,10 @@ fn get_color(
     if app_id.contains("nvim") {
         return "#98c379".to_string();
     }
-    if app_id == "google-chrome" || app_id.contains("chrome") {
+    if app_id == "chromium" || app_id.contains("chromium") {
         return "#ea4335".to_string();
     }
-    if app_id == "firefox" {
+    if app_id == "zen" {
         return "#ff7139".to_string();
     }
     if app_id == "vesktop" || app_id == "discord" {
