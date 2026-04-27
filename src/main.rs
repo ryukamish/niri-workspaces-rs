@@ -135,18 +135,18 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
         let ws_output = if win_count == 0 {
             // Empty but focused - just show a dot, no name
             // "<span color='#888888'>·</span>".to_string()
-            format!("{} <span color='#888888'>.</span>", ws.idx)
+            format!("{} <span color='#b8a9e9'>.</span>", ws.idx)
         } else {
             let mut output = String::new();
 
             // Always show the workspace number on the left
             if ws.is_focused {
-                output.push_str(&format!("<span color='#cccccc'>{}</span> ", ws.idx));
+                output.push_str(&format!("<span color='#b8a9e9'>{}</span> ", ws.idx));
             }
 
             // Show workspace name only when focused
             if has_custom_name && ws.is_focused {
-                output.push_str(&format!("<span color='#cccccc'>{}</span> ", ws_name));
+                output.push_str(&format!("<span color='#b8a9e9'>{}</span> ", ws_name));
             }
 
             for win in &ws_windows {
@@ -160,7 +160,7 @@ fn output_status(workspaces: &[Workspace], windows: &[Window]) {
                 }
 
                 let mut bar = if win.is_focused {
-                    "<span color='#a76eee'>█</span>"
+                    "<span color='#f6764f'>█</span>"
                 } else if !ws.is_focused && ws.active_window_id == Some(win.id) {
                     "▌"
                 } else {
@@ -324,6 +324,9 @@ fn get_color(
     }
     if app_id == "zen" {
         return "#ff7139".to_string();
+    }
+    if app_id == "firefox" {
+        return "#ffdd46".to_string();
     }
     if app_id == "vesktop" || app_id == "discord" {
         return "#c678dd".to_string();
